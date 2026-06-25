@@ -1,0 +1,42 @@
+# Dependencies
+/vendor/
+composer.lock
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+/coverage/
+.phpunit.result.cache
+phpunit.xml
+
+# Build
+/build/
+/dist/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Secrets / credentials — NEVER commit these
+auth.json
+*.key
+*.pem
+*.p12
+*.pfx

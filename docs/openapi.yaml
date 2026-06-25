@@ -1,0 +1,2129 @@
+openapi: 3.0.3
+info:
+  title: Pigeon Express API
+  description: |
+    API for Bulgarian courier service Pigeon Express.
+
+    This API allows you to:
+    - Search and retrieve cities, streets, and offices
+    - Calculate shipping costs
+    - Create shipments and get tracking information
+
+    ## Authentication
+    All requests require API Key and API Secret in headers.
+
+    ## Base URLs
+    - **Production**: `coming soon`
+    - **Sandbox**: `https://api-demo.pigeonexpress.com/v1`
+  version: 1.0.0
+  # contact:
+  #   name: Pigeon Express Support
+  #   email: support@pigeonexpress.bg
+  #   url: https://pigeonexpress.com/
+  license:
+    name: Proprietary
+    url: https://pigeonexpress.com/privacy
+
+servers:
+  - url: coming soon
+    description: Production server
+  - url: https://api-demo.pigeonexpress.com/v1
+    description: Sandbox server
+
+tags:
+  - name: Cities
+    description: City operations
+  - name: Streets
+    description: Street operations
+  - name: Offices
+    description: Office and locker operations
+  - name: Shipments
+    description: Shipment operations
+
+security:
+  - ApiKeyAuth: []
+    ApiSecretAuth: []
+
+paths:
+  /cities:
+    get:
+      tags:
+        - Cities
+      summary: List all cities
+      description: Returns paginated list of all serviced cities
+      operationId: listCities
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page (max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/cities?page=1&per_page=50" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/cities?page=1&per_page=50",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $cities = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $cities = $client->cities()->all(['page' => 1, 'per_page' => 50]);
+
+            foreach ($cities as $city) {
+                echo $city->getName() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/cities?page=1&per_page=50"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+            System.out.println(response.body());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/City'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cities/search:
+    get:
+      tags:
+        - Cities
+      summary: Search cities
+      description: Search cities by name (supports Bulgarian and English)
+      operationId: searchCities
+      parameters:
+        - name: q
+          in: query
+          description: Search query (min 2 characters)
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          description: Maximum results to return
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/cities/search?q=София&limit=10" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $query = urlencode('София');
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/cities/search?q={$query}&limit=10",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $cities = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $cities = $client->cities()->search('София', ['limit' => 10]);
+
+            foreach ($cities as $city) {
+                echo $city->getId() . ': ' . $city->getName() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            String query = URLEncoder.encode("София", StandardCharsets.UTF_8);
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/cities/search?q=" + query + "&limit=10"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/City'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cities/{cityId}:
+    get:
+      tags:
+        - Cities
+      summary: Get city by ID
+      description: Returns a single city by its ID
+      operationId: getCity
+      parameters:
+        - name: cityId
+          in: path
+          description: City ID
+          required: true
+          schema:
+            type: integer
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/cities/68134" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $cityId = 68134;
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/cities/{$cityId}",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $city = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $city = $client->cities()->find(68134);
+
+            echo $city->getName();        // София
+            echo $city->getMunicipality(); // Столична
+            echo $city->getPostCode();     // 1000
+        - lang: Java
+          label: Java
+          source: |
+            int cityId = 68134;
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/cities/" + cityId))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/City'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cities/{cityId}/streets:
+    get:
+      tags:
+        - Streets
+      summary: Get streets in city
+      description: Returns paginated list of streets in a city
+      operationId: getStreetsByCity
+      parameters:
+        - name: cityId
+          in: path
+          description: City ID
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page (max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/cities/68134/streets?page=1&per_page=50" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $cityId = 68134;
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/cities/{$cityId}/streets?page=1&per_page=50",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $streets = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $streets = $client->streets()->byCity(68134, ['page' => 1, 'per_page' => 50]);
+
+            foreach ($streets as $street) {
+                echo $street->getType() . ' ' . $street->getName() . "\n";
+                // Output: булевард Витоша
+            }
+        - lang: Java
+          label: Java
+          source: |
+            int cityId = 68134;
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/cities/" + cityId + "/streets?page=1&per_page=50"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Street'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /streets/search:
+    get:
+      tags:
+        - Streets
+      summary: Search streets
+      description: Search streets by name within a city
+      operationId: searchStreets
+      parameters:
+        - name: city_id
+          in: query
+          description: City ID to search within
+          required: true
+          schema:
+            type: integer
+        - name: q
+          in: query
+          description: Search query (min 2 characters)
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          description: Maximum results to return
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/streets/search?city_id=68134&q=Витоша&limit=10" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $cityId = 68134;
+            $query = urlencode('Витоша');
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/streets/search?city_id={$cityId}&q={$query}&limit=10",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $streets = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $streets = $client->streets()->search(68134, 'Витоша', ['limit' => 10]);
+
+            foreach ($streets as $street) {
+                echo $street->getId() . ': ' . $street->getName() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            int cityId = 68134;
+            String query = URLEncoder.encode("Витоша", StandardCharsets.UTF_8);
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/streets/search?city_id=" + cityId + "&q=" + query + "&limit=10"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Street'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offices:
+    get:
+      tags:
+        - Offices
+      summary: List all offices
+      description: Returns paginated list of all offices and lockers
+      operationId: listOffices
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page (max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: type
+          in: query
+          description: Filter by office type
+          schema:
+            type: string
+            enum:
+              - office
+              - locker
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/offices?page=1&per_page=50&type=office" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/offices?page=1&per_page=50&type=office",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $offices = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            // Get all offices
+            $offices = $client->offices()->all(['type' => 'office']);
+
+            // Get all lockers
+            $lockers = $client->offices()->all(['type' => 'locker']);
+
+            foreach ($offices as $office) {
+                echo $office->getName() . ' - ' . $office->getAddress() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/offices?page=1&per_page=50&type=office"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Office'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offices/search:
+    get:
+      tags:
+        - Offices
+      summary: Search offices
+      description: Search offices by name or city
+      operationId: searchOffices
+      parameters:
+        - name: city_id
+          in: query
+          description: Filter by city ID
+          schema:
+            type: integer
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Filter by office type
+          schema:
+            type: string
+            enum:
+              - office
+              - locker
+        - name: limit
+          in: query
+          description: Maximum results to return
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/offices/search?city_id=68134&type=office&limit=10" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $cityId = 68134;
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/offices/search?city_id={$cityId}&type=office&limit=10",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $offices = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            // Search offices in Sofia
+            $offices = $client->offices()->search([
+                'city_id' => 68134,
+                'type' => 'office',
+                'limit' => 10
+            ]);
+
+            foreach ($offices as $office) {
+                echo $office->getName() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            int cityId = 68134;
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/offices/search?city_id=" + cityId + "&type=office&limit=10"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Office'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offices/{officeId}:
+    get:
+      tags:
+        - Offices
+      summary: Get office by ID
+      description: Returns a single office by its ID
+      operationId: getOffice
+      parameters:
+        - name: officeId
+          in: path
+          description: Office ID
+          required: true
+          schema:
+            type: integer
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/offices/1001" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $officeId = 1001;
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/offices/{$officeId}",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $office = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $office = $client->offices()->find(1001);
+
+            echo $office->getName();      // София - Център
+            echo $office->getAddress();   // бул. Витоша 100
+            echo $office->getType();      // office
+
+            // Get working hours
+            foreach ($office->getWorkingHours() as $hours) {
+                echo $hours->getDay() . ': ' . $hours->getOpen() . ' - ' . $hours->getClose() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            int officeId = 1001;
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/offices/" + officeId))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Office'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/calculate:
+    post:
+      tags:
+        - Shipments
+      summary: Calculate shipping cost
+      description: Calculate shipping cost based on delivery parameters
+      operationId: calculateShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateShipmentRequest'
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X POST "https://api-demo.pigeonexpress.com/v1/shipments/calculate" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "pickup_type": "office",
+                "pickup_office_id": 1001,
+                "delivery_type": "address",
+                "delivery_address": {
+                  "city_id": 68134,
+                  "street_id": 12345,
+                  "street_number": "100"
+                },
+                "packages": [{"weight": 1.5, "length": 30, "width": 20, "height": 15}],
+                "service_type": "standard",
+                "cod_amount": 50.00
+              }'
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $data = [
+                'pickup_type' => 'office',
+                'pickup_office_id' => 1001,
+                'delivery_type' => 'address',
+                'delivery_address' => [
+                    'city_id' => 68134,
+                    'street_id' => 12345,
+                    'street_number' => '100'
+                ],
+                'packages' => [['weight' => 1.5, 'length' => 30, 'width' => 20, 'height' => 15]],
+                'service_type' => 'standard',
+                'cod_amount' => 50.00
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments/calculate",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($data),
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret",
+                    "Content-Type: application/json"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $calculation = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+            use PigeonExpress\DTO\Request\CalculateShipmentRequest;
+            use PigeonExpress\DTO\Request\PackageData;
+            use PigeonExpress\DTO\Request\AddressData;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            $request = new CalculateShipmentRequest();
+            $request->setPickupType('office')
+                    ->setPickupOfficeId(1001)
+                    ->setDeliveryType('address')
+                    ->setDeliveryAddress(
+                        (new AddressData())
+                            ->setCityId(68134)
+                            ->setStreetId(12345)
+                            ->setStreetNumber('100')
+                    )
+                    ->addPackage(
+                        (new PackageData())
+                            ->setWeight(1.5)
+                            ->setDimensions(30, 20, 15)
+                    )
+                    ->setServiceType('standard')
+                    ->setCodAmount(50.00);
+
+            $calculation = $client->shipments()->calculate($request);
+
+            echo "Shipping: " . $calculation->getShippingPrice() . " BGN\n";
+            echo "Total: " . $calculation->getTotalPrice() . " BGN\n";
+            echo "Delivery: " . $calculation->getEstimatedDeliveryDays() . " days\n";
+        - lang: Java
+          label: Java
+          source: |
+            String jsonBody = """
+                {
+                  "pickup_type": "office",
+                  "pickup_office_id": 1001,
+                  "delivery_type": "address",
+                  "delivery_address": {
+                    "city_id": 68134,
+                    "street_id": 12345,
+                    "street_number": "100"
+                  },
+                  "packages": [{"weight": 1.5, "length": 30, "width": 20, "height": 15}],
+                  "service_type": "standard",
+                  "cod_amount": 50.00
+                }
+                """;
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments/calculate"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ShipmentCalculation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipments:
+    post:
+      tags:
+        - Shipments
+      summary: Create shipment
+      description: Create a new shipment and get tracking number
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShipmentRequest'
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X POST "https://api-demo.pigeonexpress.com/v1/shipments" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "receiver_name": "Иван Петров",
+                "receiver_phone": "+359888123456",
+                "receiver_email": "ivan@example.com",
+                "pickup_type": "office",
+                "pickup_office_id": 1001,
+                "delivery_type": "address",
+                "delivery_address": {
+                  "city_id": 68134,
+                  "street_id": 12345,
+                  "street_number": "100",
+                  "floor": "3",
+                  "apartment": "12"
+                },
+                "packages": [{"weight": 1.5, "length": 30, "width": 20, "height": 15}],
+                "service_type": "standard",
+                "who_pays": "receiver",
+                "cod_amount": 50.00,
+                "sms_notification": true,
+                "note": "Да се обади преди доставка"
+              }'
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $data = [
+                'receiver_name' => 'Иван Петров',
+                'receiver_phone' => '+359888123456',
+                'receiver_email' => 'ivan@example.com',
+                'pickup_type' => 'office',
+                'pickup_office_id' => 1001,
+                'delivery_type' => 'address',
+                'delivery_address' => [
+                    'city_id' => 68134,
+                    'street_id' => 12345,
+                    'street_number' => '100',
+                    'floor' => '3',
+                    'apartment' => '12'
+                ],
+                'packages' => [['weight' => 1.5, 'length' => 30, 'width' => 20, 'height' => 15]],
+                'service_type' => 'standard',
+                'who_pays' => 'receiver',
+                'cod_amount' => 50.00,
+                'sms_notification' => true,
+                'note' => 'Да се обади преди доставка'
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($data),
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret",
+                    "Content-Type: application/json"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $shipment = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+            use PigeonExpress\DTO\Request\CreateShipmentRequest;
+            use PigeonExpress\DTO\Request\PackageData;
+            use PigeonExpress\DTO\Request\AddressData;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            $request = new CreateShipmentRequest();
+            $request->setReceiverName('Иван Петров')
+                    ->setReceiverPhone('+359888123456')
+                    ->setReceiverEmail('ivan@example.com')
+                    ->setPickupType('office')
+                    ->setPickupOfficeId(1001)
+                    ->setDeliveryType('address')
+                    ->setDeliveryAddress(
+                        (new AddressData())
+                            ->setCityId(68134)
+                            ->setStreetId(12345)
+                            ->setStreetNumber('100')
+                            ->setFloor('3')
+                            ->setApartment('12')
+                    )
+                    ->addPackage(
+                        (new PackageData())
+                            ->setWeight(1.5)
+                            ->setDimensions(30, 20, 15)
+                    )
+                    ->setServiceType('standard')
+                    ->setWhoPays('receiver')
+                    ->setCodAmount(50.00)
+                    ->setSmsNotification(true)
+                    ->setNote('Да се обади преди доставка');
+
+            $shipment = $client->shipments()->create($request);
+
+            echo "Reference: " . $shipment->getReferenceNumber() . "\n";
+            echo "Tracking: " . $shipment->getTrackingNumber() . "\n";
+        - lang: Java
+          label: Java
+          source: |
+            String jsonBody = """
+                {
+                  "receiver_name": "Иван Петров",
+                  "receiver_phone": "+359888123456",
+                  "receiver_email": "ivan@example.com",
+                  "pickup_type": "office",
+                  "pickup_office_id": 1001,
+                  "delivery_type": "address",
+                  "delivery_address": {
+                    "city_id": 68134,
+                    "street_id": 12345,
+                    "street_number": "100",
+                    "floor": "3",
+                    "apartment": "12"
+                  },
+                  "packages": [{"weight": 1.5, "length": 30, "width": 20, "height": 15}],
+                  "service_type": "standard",
+                  "who_pays": "receiver",
+                  "cod_amount": 50.00,
+                  "sms_notification": true,
+                  "note": "Да се обади преди доставка"
+                }
+                """;
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Shipment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /shipments/{referenceNumber}:
+    get:
+      tags:
+        - Shipments
+      summary: Get shipment
+      description: Get shipment details by reference number
+      operationId: getShipment
+      parameters:
+        - name: referenceNumber
+          in: path
+          description: Shipment reference number
+          required: true
+          schema:
+            type: string
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/shipments/455123456789" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $referenceNumber = '455123456789';
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments/{$referenceNumber}",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $shipment = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $shipment = $client->shipments()->find('455123456789');
+
+            echo "Status: " . $shipment->getStatus() . "\n";
+            echo "Tracking: " . $shipment->getTrackingNumber() . "\n";
+            echo "Total: " . $shipment->getTotalPrice() . " " . $shipment->getCurrency() . "\n";
+        - lang: Java
+          label: Java
+          source: |
+            String referenceNumber = "455123456789";
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments/" + referenceNumber))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Shipment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{referenceNumber}/track:
+    get:
+      tags:
+        - Shipments
+      summary: Track shipment
+      description: Get tracking history for a shipment
+      operationId: trackShipment
+      parameters:
+        - name: referenceNumber
+          in: path
+          description: Shipment reference number
+          required: true
+          schema:
+            type: string
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/shipments/455123456789/track" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $referenceNumber = '455123456789';
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments/{$referenceNumber}/track",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $tracking = json_decode($response, true);
+            curl_close($curl);
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+            $tracking = $client->shipments()->track('455123456789');
+
+            echo "Current status: " . $tracking->getCurrentStatus() . "\n";
+            echo "Tracking number: " . $tracking->getTrackingNumber() . "\n\n";
+
+            echo "History:\n";
+            foreach ($tracking->getEvents() as $event) {
+                echo $event->getTimestamp() . " - " . $event->getDescription() . "\n";
+                if ($event->getLocation()) {
+                    echo "  Location: " . $event->getLocation() . "\n";
+                }
+            }
+        - lang: Java
+          label: Java
+          source: |
+            String referenceNumber = "455123456789";
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments/" + referenceNumber + "/track"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/TrackingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{referenceNumber}/cancel:
+    post:
+      tags:
+        - Shipments
+      summary: Cancel shipment
+      description: Cancel a shipment (only before pickup)
+      operationId: cancelShipment
+      parameters:
+        - name: referenceNumber
+          in: path
+          description: Shipment reference number
+          required: true
+          schema:
+            type: string
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            curl -X POST "https://api-demo.pigeonexpress.com/v1/shipments/455123456789/cancel" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret"
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $referenceNumber = '455123456789';
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments/{$referenceNumber}/cancel",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $response = curl_exec($curl);
+            $result = json_decode($response, true);
+            curl_close($curl);
+
+            if ($result['success']) {
+                echo "Shipment cancelled successfully\n";
+            }
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+            use PigeonExpress\Exceptions\PigeonExpressException;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            try {
+                $result = $client->shipments()->cancel('455123456789');
+                echo "Shipment cancelled successfully\n";
+            } catch (PigeonExpressException $e) {
+                // Shipment already picked up or delivered
+                echo "Cannot cancel: " . $e->getMessage() . "\n";
+            }
+        - lang: Java
+          label: Java
+          source: |
+            String referenceNumber = "455123456789";
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments/" + referenceNumber + "/cancel"))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+            HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Пратката е отменена успешно"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{referenceNumber}/label:
+    get:
+      tags:
+        - Shipments
+      summary: Get shipping label
+      description: Download shipping label as PDF
+      operationId: getShipmentLabel
+      parameters:
+        - name: referenceNumber
+          in: path
+          description: Shipment reference number
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: Label format
+          schema:
+            type: string
+            enum:
+              - pdf
+              - zpl
+            default: pdf
+      x-codeSamples:
+        - lang: Shell
+          label: cURL
+          source: |
+            # Download PDF label
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/shipments/455123456789/label?format=pdf" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret" \
+              --output label.pdf
+
+            # Download ZPL label (for thermal printers)
+            curl -X GET "https://api-demo.pigeonexpress.com/v1/shipments/455123456789/label?format=zpl" \
+              -H "X-API-Key: your-api-key" \
+              -H "X-API-Secret: your-api-secret" \
+              --output label.zpl
+        - lang: PHP
+          label: PHP (cURL)
+          source: |
+            <?php
+            $referenceNumber = '455123456789';
+            $format = 'pdf'; // or 'zpl'
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "https://api-demo.pigeonexpress.com/v1/shipments/{$referenceNumber}/label?format={$format}",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "X-API-Key: your-api-key",
+                    "X-API-Secret: your-api-secret"
+                ],
+            ]);
+            $labelContent = curl_exec($curl);
+            $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
+            curl_close($curl);
+
+            // Save to file
+            file_put_contents("label.{$format}", $labelContent);
+
+            // Or output to browser
+            header("Content-Type: {$contentType}");
+            header("Content-Disposition: attachment; filename=\"label.{$format}\"");
+            echo $labelContent;
+        - lang: PHP
+          label: PHP SDK
+          source: |
+            <?php
+            use PigeonExpress\PigeonExpress;
+
+            $client = new PigeonExpress($apiKey, $apiSecret);
+
+            // Get PDF label
+            $pdfContent = $client->shipments()->getLabel('455123456789', 'pdf');
+            file_put_contents('label.pdf', $pdfContent);
+
+            // Get ZPL label for thermal printer
+            $zplContent = $client->shipments()->getLabel('455123456789', 'zpl');
+            file_put_contents('label.zpl', $zplContent);
+
+            // Stream to browser
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="shipping-label.pdf"');
+            echo $client->shipments()->getLabel('455123456789', 'pdf');
+        - lang: Java
+          label: Java
+          source: |
+            String referenceNumber = "455123456789";
+            String format = "pdf"; // or "zpl"
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api-demo.pigeonexpress.com/v1/shipments/" + referenceNumber + "/label?format=" + format))
+                .header("X-API-Key", "your-api-key")
+                .header("X-API-Secret", "your-api-secret")
+                .GET()
+                .build();
+
+            // Save to file
+            HttpResponse<Path> response = client.send(request,
+                HttpResponse.BodyHandlers.ofFile(Path.of("label." + format)));
+
+            System.out.println("Label saved to: " + response.body());
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key provided by Pigeon Express
+    ApiSecretAuth:
+      type: apiKey
+      in: header
+      name: X-API-Secret
+      description: API Secret provided by Pigeon Express
+
+  schemas:
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 68134
+        name:
+          type: string
+          example: "София"
+        name_en:
+          type: string
+          example: "Sofia"
+        region:
+          type: string
+          example: "София"
+        municipality:
+          type: string
+          example: "Столична"
+        post_code:
+          type: string
+          example: "1000"
+        type:
+          type: string
+          description: City type in Bulgarian
+          enum:
+            - град
+            - село
+            - к.к.
+            - курорт
+          example: "град"
+        country_code:
+          type: string
+          example: "BGR"
+      required:
+        - id
+        - name
+        - type
+
+    Street:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12345
+        city_id:
+          type: integer
+          example: 68134
+        name:
+          type: string
+          example: "Витоша"
+        name_en:
+          type: string
+          nullable: true
+          example: "Vitosha"
+        type:
+          type: string
+          description: Street type in Bulgarian
+          enum:
+            - улица
+            - булевард
+            - площад
+            - алея
+            - махала
+            - местност
+            - квартал
+          example: "булевард"
+      required:
+        - id
+        - city_id
+        - name
+        - type
+
+    Office:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1001
+        name:
+          type: string
+          example: "София - Център"
+        city_id:
+          type: integer
+          example: 68134
+        address:
+          type: string
+          example: "бул. Витоша 100"
+        type:
+          type: string
+          enum:
+            - office
+            - locker
+          example: "office"
+        latitude:
+          type: number
+          format: float
+          nullable: true
+          example: 42.6977
+        longitude:
+          type: number
+          format: float
+          nullable: true
+          example: 23.3219
+        working_hours:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingHours'
+        max_weight:
+          type: number
+          format: float
+          nullable: true
+          description: Maximum package weight in kg (for lockers)
+          example: 20
+        max_dimensions:
+          type: object
+          nullable: true
+          description: Maximum dimensions (for lockers)
+          properties:
+            length:
+              type: integer
+              example: 60
+            width:
+              type: integer
+              example: 40
+            height:
+              type: integer
+              example: 40
+      required:
+        - id
+        - name
+        - city_id
+        - address
+        - type
+
+    WorkingHours:
+      type: object
+      properties:
+        day:
+          type: string
+          enum:
+            - monday
+            - tuesday
+            - wednesday
+            - thursday
+            - friday
+            - saturday
+            - sunday
+          example: "monday"
+        open:
+          type: string
+          example: "09:00"
+        close:
+          type: string
+          example: "18:00"
+        is_closed:
+          type: boolean
+          example: false
+
+    Package:
+      type: object
+      properties:
+        weight:
+          type: number
+          format: float
+          description: Weight in kg
+          minimum: 0.1
+          maximum: 30
+          example: 1.5
+        length:
+          type: integer
+          description: Length in cm
+          minimum: 1
+          maximum: 200
+          example: 30
+        width:
+          type: integer
+          description: Width in cm
+          minimum: 1
+          maximum: 200
+          example: 20
+        height:
+          type: integer
+          description: Height in cm
+          minimum: 1
+          maximum: 200
+          example: 15
+      required:
+        - weight
+
+    Address:
+      type: object
+      properties:
+        city_id:
+          type: integer
+          description: City ID from cities API
+          example: 68134
+        street_id:
+          type: integer
+          nullable: true
+          description: Street ID from streets API (optional)
+          example: 12345
+        street_name:
+          type: string
+          nullable: true
+          description: Street name (alternative to street_id)
+          example: "Витоша"
+        street_number:
+          type: string
+          example: "100"
+        building_number:
+          type: string
+          nullable: true
+          example: "А"
+        entrance:
+          type: string
+          nullable: true
+          example: "1"
+        floor:
+          type: string
+          nullable: true
+          example: "3"
+        apartment:
+          type: string
+          nullable: true
+          example: "12"
+        postal_code:
+          type: string
+          nullable: true
+          example: "1000"
+        note:
+          type: string
+          nullable: true
+          description: Additional delivery instructions
+          example: "Вход от двора"
+      required:
+        - city_id
+        - street_number
+
+    CalculateShipmentRequest:
+      type: object
+      properties:
+        pickup_type:
+          type: string
+          enum:
+            - address
+            - office
+          example: "office"
+        pickup_office_id:
+          type: integer
+          description: Required if pickup_type is 'office'
+          example: 1001
+        pickup_address:
+          $ref: '#/components/schemas/Address'
+          description: Required if pickup_type is 'address'
+        delivery_type:
+          type: string
+          enum:
+            - address
+            - office
+            - locker
+          example: "address"
+        delivery_office_id:
+          type: integer
+          description: Required if delivery_type is 'office' or 'locker'
+          example: 2001
+        delivery_address:
+          $ref: '#/components/schemas/Address'
+          description: Required if delivery_type is 'address'
+        packages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Package'
+          minItems: 1
+        service_type:
+          type: string
+          enum:
+            - standard
+            - express
+          default: standard
+        who_pays:
+          type: string
+          enum:
+            - sender
+            - receiver
+          default: sender
+        cod_amount:
+          type: number
+          format: float
+          description: Cash on delivery amount (0 for prepaid)
+          minimum: 0
+          example: 50.00
+      required:
+        - pickup_type
+        - delivery_type
+        - packages
+
+    ShipmentCalculation:
+      type: object
+      properties:
+        shipping_price:
+          type: number
+          format: float
+          description: Base shipping cost
+          example: 5.99
+        total_price:
+          type: number
+          format: float
+          description: Total cost including all fees
+          example: 7.49
+        currency:
+          type: string
+          example: "BGN"
+        estimated_delivery_days:
+          type: integer
+          description: Estimated delivery time in business days
+          example: 2
+        service_fees:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceFee'
+
+    ServiceFee:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Наложен платеж"
+        amount:
+          type: number
+          format: float
+          example: 1.50
+
+    CreateShipmentRequest:
+      type: object
+      properties:
+        receiver_name:
+          type: string
+          description: Full name of recipient
+          example: "Иван Петров"
+        receiver_phone:
+          type: string
+          description: Phone number (Bulgarian format)
+          example: "+359888123456"
+        receiver_email:
+          type: string
+          format: email
+          nullable: true
+          example: "ivan@example.com"
+        pickup_type:
+          type: string
+          enum:
+            - address
+            - office
+          example: "office"
+        pickup_office_id:
+          type: integer
+          description: Required if pickup_type is 'office'
+          example: 1001
+        pickup_address:
+          $ref: '#/components/schemas/Address'
+          description: Required if pickup_type is 'address'
+        delivery_type:
+          type: string
+          enum:
+            - address
+            - office
+            - locker
+          example: "address"
+        delivery_office_id:
+          type: integer
+          description: Required if delivery_type is 'office' or 'locker'
+          example: 2001
+        delivery_address:
+          $ref: '#/components/schemas/Address'
+          description: Required if delivery_type is 'address'
+        packages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Package'
+          minItems: 1
+        service_type:
+          type: string
+          enum:
+            - standard
+            - express
+          default: standard
+        who_pays:
+          type: string
+          enum:
+            - sender
+            - receiver
+          default: sender
+        cod_amount:
+          type: number
+          format: float
+          description: Cash on delivery amount (product value only, without delivery fee)
+          minimum: 0
+          example: 50.00
+        sms_notification:
+          type: boolean
+          description: Send SMS updates to recipient
+          default: false
+        note:
+          type: string
+          nullable: true
+          description: Note for courier
+          example: "Да се обади преди доставка"
+      required:
+        - receiver_name
+        - receiver_phone
+        - pickup_type
+        - delivery_type
+        - packages
+
+    Shipment:
+      type: object
+      properties:
+        reference_number:
+          type: string
+          description: Internal reference number
+          example: "455123456789"
+        tracking_number:
+          type: string
+          description: Public tracking number
+          example: "455123456789"
+        status:
+          type: string
+          enum:
+            - created
+            - picked_up
+            - in_transit
+            - out_for_delivery
+            - delivered
+            - returned
+            - cancelled
+          example: "created"
+        shipping_price:
+          type: number
+          format: float
+          example: 5.99
+        total_price:
+          type: number
+          format: float
+          example: 7.49
+        currency:
+          type: string
+          example: "BGN"
+        estimated_delivery:
+          type: string
+          format: date
+          example: "2026-02-20"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-18T10:30:00Z"
+
+    TrackingResponse:
+      type: object
+      properties:
+        reference_number:
+          type: string
+          example: "455123456789"
+        tracking_number:
+          type: string
+          example: "455651653781"
+        current_status:
+          type: string
+          example: "in_transit"
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingEvent'
+
+    TrackingEvent:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "picked_up"
+        description:
+          type: string
+          example: "Пратката е взета от куриер"
+        location:
+          type: string
+          nullable: true
+          example: "София - Център"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-18T14:30:00Z"
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          example: 150
+        total_pages:
+          type: integer
+          example: 3
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_CITY_ID"
+            message:
+              type: string
+              description: Error message in Bulgarian
+              example: "Невалиден град"
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "MISSING_REQUIRED_FIELD"
+              message: "Липсващо задължително поле"
+
+    Unauthorized:
+      description: Unauthorized - Invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "INVALID_API_KEY"
+              message: "Невалиден API ключ"
+
+    NotFound:
+      description: Not found - Resource doesn't exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "NOT_FOUND"
+              message: "Ресурсът не е намерен"
+
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "INVALID_PHONE"
+              message: "Невалиден телефонен номер"
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Надвишен лимит на заявки"
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 60
+
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              code: "SERVICE_UNAVAILABLE"
+              message: "Външната система е временно недостъпна"

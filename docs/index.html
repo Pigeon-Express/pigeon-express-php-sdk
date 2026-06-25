@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pigeon Express API Documentation</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .sdk-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sdk-banner-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sdk-banner-text svg {
+            width: 20px;
+            height: 20px;
+        }
+        .sdk-banner-links {
+            display: flex;
+            gap: 15px;
+        }
+        .sdk-banner-links a {
+            color: white;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.15);
+            transition: background 0.2s;
+            font-weight: 500;
+        }
+        .sdk-banner-links a:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .sdk-banner-links a.primary {
+            background: white;
+            color: #667eea;
+        }
+        .sdk-banner-links a.primary:hover {
+            background: #f0f0f0;
+        }
+        @media (max-width: 768px) {
+            .sdk-banner {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- <div class="sdk-banner">
+        <div class="sdk-banner-text">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Looking for easy integration? Check out our PHP SDK!</span>
+        </div>
+        <div class="sdk-banner-links">
+            <a href="./sdk/README.md">Installation</a>
+            <a href="./sdk/quick-start.md">Quick Start</a>
+            <a href="./sdk/examples.md">Examples</a>
+            <a href="./sdk/laravel-integration.md" class="primary">Laravel Integration</a>
+        </div>
+    </div> -->
+    <redoc spec-url='./openapi.yaml'
+           hide-download-button="false"
+           expand-responses="200"
+           json-sample-expand-level="2"
+           generate-code-samples="false">
+    </redoc>
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
