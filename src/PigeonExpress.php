@@ -4,6 +4,7 @@ namespace PigeonExpress;
 
 use PigeonExpress\HttpClient\GuzzleHttpClient;
 use PigeonExpress\HttpClient\HttpClientInterface;
+use PigeonExpress\Resources\AdditionalServices;
 use PigeonExpress\Resources\Cities;
 use PigeonExpress\Resources\Offices;
 use PigeonExpress\Resources\Shipments;
@@ -166,6 +167,20 @@ class PigeonExpress
         }
 
         return $this->resources['shipments'];
+    }
+
+    /**
+     * Get additional services resource
+     *
+     * @return AdditionalServices
+     */
+    public function additionalServices()
+    {
+        if (!isset($this->resources['additionalServices'])) {
+            $this->resources['additionalServices'] = new AdditionalServices($this->httpClient);
+        }
+
+        return $this->resources['additionalServices'];
     }
 
     /**
