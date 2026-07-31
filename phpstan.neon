@@ -1,0 +1,11 @@
+# Static analysis for the Pigeon Express PHP SDK.
+#
+#   ../../vendor/bin/phpstan analyse -c phpstan.neon --memory-limit=1G
+#
+# The SDK targets PHP 7.3+ and uses no type declarations, so level 5 is where it
+# sits cleanly. Raise deliberately.
+parameters:
+    level: 5
+    paths:
+        - src
+    treatPhpDocTypesAsCertain: false
