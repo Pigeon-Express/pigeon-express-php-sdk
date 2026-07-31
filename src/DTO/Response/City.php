@@ -42,6 +42,26 @@ class City implements Arrayable
     private $postalCode;
 
     /**
+     * @var string|null Latin transliteration of the name
+     */
+    private $nameEn;
+
+    /**
+     * @var string|null
+     */
+    private $typeEn;
+
+    /**
+     * @var string|null
+     */
+    private $districtEn;
+
+    /**
+     * @var string|null
+     */
+    private $municipalityEn;
+
+    /**
      * Get city ID
      *
      * @return int
@@ -112,6 +132,42 @@ class City implements Arrayable
     }
 
     /**
+     * Get the Latin transliteration of the city name.
+     *
+     * Needed to resolve a city typed in Latin script against Cyrillic data.
+     *
+     * @return string|null
+     */
+    public function getNameEn()
+    {
+        return $this->nameEn;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getTypeEn()
+    {
+        return $this->typeEn;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getDistrictEn()
+    {
+        return $this->districtEn;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getMunicipalityEn()
+    {
+        return $this->municipalityEn;
+    }
+
+    /**
      * Create from API response data
      *
      * @param array $data
@@ -126,6 +182,10 @@ class City implements Arrayable
         $city->district = isset($data['district']) ? $data['district'] : null;
         $city->municipality = isset($data['municipality']) ? $data['municipality'] : null;
         $city->postalCode = isset($data['postal_code']) ? $data['postal_code'] : null;
+        $city->nameEn = isset($data['name_en']) ? $data['name_en'] : null;
+        $city->typeEn = isset($data['type_en']) ? $data['type_en'] : null;
+        $city->districtEn = isset($data['district_en']) ? $data['district_en'] : null;
+        $city->municipalityEn = isset($data['municipality_en']) ? $data['municipality_en'] : null;
 
         return $city;
     }
@@ -144,6 +204,10 @@ class City implements Arrayable
             'district' => $this->district,
             'municipality' => $this->municipality,
             'postal_code' => $this->postalCode,
+            'name_en' => $this->nameEn,
+            'type_en' => $this->typeEn,
+            'district_en' => $this->districtEn,
+            'municipality_en' => $this->municipalityEn,
         );
     }
 }

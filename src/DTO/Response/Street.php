@@ -37,6 +37,16 @@ class Street implements Arrayable
     private $cityId;
 
     /**
+     * @var string|null Latin transliteration of the street name
+     */
+    private $nameEn;
+
+    /**
+     * @var string|null
+     */
+    private $typeEn;
+
+    /**
      * Get street ID
      *
      * @return int
@@ -81,6 +91,26 @@ class Street implements Arrayable
      *
      * @return int
      */
+    /**
+     * Get the Latin transliteration of the street name.
+     *
+     * Needed to match a street typed in Latin script against Cyrillic data.
+     *
+     * @return string|null
+     */
+    public function getNameEn()
+    {
+        return $this->nameEn;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getTypeEn()
+    {
+        return $this->typeEn;
+    }
+
     public function getCityId()
     {
         return $this->cityId;
@@ -100,6 +130,8 @@ class Street implements Arrayable
         $street->type = isset($data['type']) ? $data['type'] : '';
         $street->fullName = isset($data['full_name']) ? $data['full_name'] : '';
         $street->cityId = isset($data['city_id']) ? (int) $data['city_id'] : 0;
+        $street->nameEn = isset($data['name_en']) ? $data['name_en'] : null;
+        $street->typeEn = isset($data['type_en']) ? $data['type_en'] : null;
 
         return $street;
     }
@@ -117,6 +149,8 @@ class Street implements Arrayable
             'type' => $this->type,
             'full_name' => $this->fullName,
             'city_id' => $this->cityId,
+            'name_en' => $this->nameEn,
+            'type_en' => $this->typeEn,
         );
     }
 }

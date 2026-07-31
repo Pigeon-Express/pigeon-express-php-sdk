@@ -1,6 +1,7 @@
 {
     "name": "pigeonexpress/php-sdk",
     "description": "Official PHP SDK for Pigeon Express Courier API",
+    "version": "1.1.0",
     "type": "library",
     "license": "MIT",
     "keywords": [
