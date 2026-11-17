@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `shipments()->get()` reads a full shipment from `GET /shipments/{ref}` as a
+  `ShipmentDetails`, including the fees the carrier charged (`pricing.fees`).
+- `shipments()->update()` edits a newly registered shipment with
+  `PUT /shipments/{ref}`.
+- `shipments()->trackBulk()` tracks any number of shipments through
+  `POST /shipments/track/bulk`, 100 per request, as `BulkTrackingEntry` objects.
+- `shipmentStatuses()` resource for `GET /shipment-statuses`.
+- `courierRequests()` resource to create, read back and cancel courier
+  requests. The API has no list of them.
+- `addresses()` resource for the account's saved addresses (`GET /addresses`).
+- `ConflictException` for HTTP 409, carrying `Retry-After`. Shipment create and
+  update and the courier request calls repeat a 409 up to twice with the same
+  body, and `getLastReplay()` tells when the answer was a replay of an earlier
+  identical request (the `X-Duplicate-Request` header, also on
+  `Response::isDuplicateRequest()`).
+- Create request fields: reverse shipments and their sender, saved address ids,
+  return office or address, return documents destination,
+  `external_reference` (checked to be at most 100 characters),
+  `hide_content_on_label`, `label_format`, `pay_with_pos`, `service_codes`
+  and `inventory_items`.
+- `CreateShipmentRequest::fromArray()` and `set()` on the create request,
+  package and address objects, so fields without a setter are sent instead of
+  dropped.
+- `FeeBreakdown` exposes the fee's service `code` and `quantity`.
+
+### Fixed
+- `track()` URL-encodes the reference number.
+- `Shipment` reads the status the create endpoint sends as a plain name.
+- `WorkingHours` reads the list of `{day, open, close}` entries the offices
+  endpoint sends. It expected an object keyed by day and lost every day.
+  `getEntries()` returns each stretch as listed, lunch breaks included.
+
 ## [1.1.0] - 2026-07-30
 
 ### Fixed

@@ -251,12 +251,86 @@ try {
 }
 ```
 
+### Read Back, Edit and Bulk Track Shipments
+
+```php
+// Everything the carrier holds, including what it charged.
+$details = $client->shipments()->get('459073686609');
+echo $details->getStatus()->getCode() . "\n";
+$codFee = $details->getFee('cod_fee'); // FeeBreakdown or null
+
+// Edit a shipment still in shipment_registered. Send the whole body, as on
+// create: whatever is left out is cleared.
+$details = $client->shipments()->update('459073686609', $request);
+
+// Any number of references; sent in batches of 100.
+foreach ($client->shipments()->trackBulk($references) as $reference => $entry) {
+    echo $reference . ': ' . ($entry->isFound() ? $entry->getStatusCode() : $entry->getError()) . "\n";
+}
+
+// Status codes and their names.
+$names = $client->shipmentStatuses()->namesByCode();
+```
+
+### Repeated Requests (409 and Replays)
+
+The API deduplicates writes for 30 seconds. A request identical to one still
+running is answered 409; `create()`, `update()` and the courier request calls
+repeat it up to twice with the same body, waiting what `Retry-After` asks (at
+most 8 seconds). Still 409 after that, a `ConflictException` is thrown and the
+outcome is unknown. `setConflictRetries(0)` turns the repeats off.
+
+A request identical to one that already succeeded is answered with that first
+result, without acting again. Check it straight after the call:
+
+```php
+use PigeonExpress\Resources\AbstractResource;
+
+$shipment = $client->shipments()->create($request);
+
+if ($client->shipments()->getLastReplay() === AbstractResource::REPLAY_EARLIER) {
+    // The shipment may have been cancelled since: read it back.
+    $current = $client->shipments()->get($shipment->getReferenceNumber());
+}
+```
+
+### Courier Requests
+
+```php
+$courier = $client->courierRequests()->create([
+    'pickup_city_id'             => 759,
+    'pickup_street_id'           => 433950,
+    'pickup_street_number'       => '15',
+    'requested_pickup_date'      => '2026-07-13',
+    'requested_pickup_time_type' => 'interval',
+    'requested_pickup_time_from' => '09:00',
+    'requested_pickup_time_to'   => '13:00',
+    'shipment_references'        => ['457911010807'],
+]);
+
+$courier = $client->courierRequests()->get($courier->getRequestNumber());
+$client->courierRequests()->cancel($courier->getRequestNumber());
+```
+
+The API has no list of courier requests, so keep the numbers you create.
+
+### Saved Addresses
+
+```php
+foreach ($client->addresses()->all() as $address) {
+    echo $address->getId() . ' ' . $address->getLabel() . "\n";
+}
+
+$request->setSenderAddressId($client->addresses()->getDefault()->getId());
+```
+
 ## Error Handling
 
 The SDK throws specific exceptions for different error types:
 
 ```php
 use PigeonExpress\Exceptions\AuthenticationException;
+use PigeonExpress\Exceptions\ConflictException;
 use PigeonExpress\Exceptions\ForbiddenException;
 use PigeonExpress\Exceptions\NotFoundException;
 use PigeonExpress\Exceptions\ValidationException;
@@ -287,6 +361,10 @@ try {
 } catch (NotFoundException $e) {
     // Handle not found errors (HTTP 404)
     echo "Resource not found\n";
+
+} catch (ConflictException $e) {
+    // An identical request is still running (HTTP 409); the outcome is unknown
+    echo "Still in progress. Retry after: " . $e->getRetryAfter() . " seconds\n";
 
 } catch (RateLimitException $e) {
     // Handle rate limit errors (HTTP 429)
@@ -322,6 +400,25 @@ When creating a shipment, you can enable these additional services:
 
 **Note:** `shipmentReview` and `shipmentTestBeforePayment` are mutually exclusive and not available for locker delivery.
 
+Other create fields:
+
+| Field | Method |
+|-------|--------|
+| Additional services (`service_codes`) | `setServiceCodes()`, `setServiceCode()` |
+| Items (`inventory_items`) | `setInventoryItems()`, `addInventoryItem()` |
+| Reverse shipment | `enableReverse()`, `setSender()`, `setSenderCompany()` |
+| Saved addresses | `setSenderAddressId()`, `setDeliveryAddressId()` (reverse only) |
+| Return destination | `setReturnOfficeId()` or `setReturnAddressId()` |
+| Return documents | `setReturnDocumentsOfficeId()` or `setReturnDocumentsAddressId()` |
+| Own reference, max 100 | `setExternalReference()` |
+| Label without content | `enableHideContentOnLabel()` |
+| Card payment at the door | `enablePayWithPos()` |
+| Anything else | `set($key, $value)` |
+
+A locker hand-in is `pickup_type` `locker` with the locker in `setPickupOfficeId()`.
+`CreateShipmentRequest::fromArray()` builds a request from a create body and
+keeps every field it has no setter for, so nothing is dropped.
+
 ## Shipment Types
 
 - **Pickup types:** `office`, `address`, `locker`
@@ -341,6 +438,10 @@ $client->offices();   // Returns Offices resource
 $client->cities();    // Returns Cities resource
 $client->streets();   // Returns Streets resource
 $client->shipments(); // Returns Shipments resource
+$client->additionalServices(); // Returns AdditionalServices resource
+$client->shipmentStatuses();   // Returns ShipmentStatuses resource
+$client->courierRequests();    // Returns CourierRequests resource
+$client->addresses();          // Returns Addresses resource
 ```
 
 ### Offices Resource
@@ -380,6 +481,35 @@ $client->shipments(); // Returns Shipments resource
 | `calculate($data)` | Calculate shipment price |
 | `create($data)` | Create new shipment |
 | `track($referenceNumber)` | Track shipment |
+| `get($referenceNumber)` | Full shipment with `pricing.fees` (`ShipmentDetails`) |
+| `update($referenceNumber, $data)` | Edit a newly registered shipment |
+| `trackBulk($references)` | Track many shipments, 100 per request |
+| `cancel($referenceNumber)` | Cancel a shipment |
+| `label($referenceNumber, $format, $download)` | Fetch a label |
+| `getLastReplay()` | Whether the last write was a replayed answer |
+
+### Courier Requests Resource
+
+| Method | Description |
+|--------|-------------|
+| `create($data)` | Request a courier |
+| `get($requestNumber)` | Read a request back |
+| `cancel($requestNumber)` | Cancel a request |
+
+### Addresses Resource
+
+| Method | Description |
+|--------|-------------|
+| `all()` | Saved addresses, the default first |
+| `find($id)` | One saved address |
+| `getDefault()` | The default address |
+
+### Shipment Statuses Resource
+
+| Method | Description |
+|--------|-------------|
+| `all()` | Every listed status |
+| `namesByCode()` | Status names keyed by code |
 
 ## Support
 

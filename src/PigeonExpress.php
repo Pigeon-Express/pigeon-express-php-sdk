@@ -5,9 +5,12 @@ namespace PigeonExpress;
 use PigeonExpress\HttpClient\GuzzleHttpClient;
 use PigeonExpress\HttpClient\HttpClientInterface;
 use PigeonExpress\Resources\AdditionalServices;
+use PigeonExpress\Resources\Addresses;
 use PigeonExpress\Resources\Cities;
+use PigeonExpress\Resources\CourierRequests;
 use PigeonExpress\Resources\Offices;
 use PigeonExpress\Resources\Shipments;
+use PigeonExpress\Resources\ShipmentStatuses;
 use PigeonExpress\Resources\Streets;
 
 /**
@@ -19,6 +22,10 @@ use PigeonExpress\Resources\Streets;
  * @property-read Cities $cities
  * @property-read Streets $streets
  * @property-read Shipments $shipments
+ * @property-read AdditionalServices $additionalServices
+ * @property-read ShipmentStatuses $shipmentStatuses
+ * @property-read CourierRequests $courierRequests
+ * @property-read Addresses $addresses
  */
 class PigeonExpress
 {
@@ -181,6 +188,48 @@ class PigeonExpress
         }
 
         return $this->resources['additionalServices'];
+    }
+
+    /**
+     * Get shipment statuses resource
+     *
+     * @return ShipmentStatuses
+     */
+    public function shipmentStatuses()
+    {
+        if (!isset($this->resources['shipmentStatuses'])) {
+            $this->resources['shipmentStatuses'] = new ShipmentStatuses($this->httpClient);
+        }
+
+        return $this->resources['shipmentStatuses'];
+    }
+
+    /**
+     * Get courier requests resource
+     *
+     * @return CourierRequests
+     */
+    public function courierRequests()
+    {
+        if (!isset($this->resources['courierRequests'])) {
+            $this->resources['courierRequests'] = new CourierRequests($this->httpClient);
+        }
+
+        return $this->resources['courierRequests'];
+    }
+
+    /**
+     * Get saved addresses resource
+     *
+     * @return Addresses
+     */
+    public function addresses()
+    {
+        if (!isset($this->resources['addresses'])) {
+            $this->resources['addresses'] = new Addresses($this->httpClient);
+        }
+
+        return $this->resources['addresses'];
     }
 
     /**

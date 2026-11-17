@@ -42,6 +42,11 @@ class PackageData implements Arrayable
     private $isFragile = false;
 
     /**
+     * @var array Fields with no typed setter, sent as given
+     */
+    private $extra = array();
+
+    /**
      * Create package data
      *
      * @param float $weight Weight in kg (required)
@@ -142,6 +147,30 @@ class PackageData implements Arrayable
     }
 
     /**
+     * Set a field that has no typed setter. It is sent as given, after the
+     * typed fields, so it wins over one of the same name.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return $this
+     */
+    public function set($key, $value)
+    {
+        $this->extra[(string) $key] = $value;
+        return $this;
+    }
+
+    /**
+     * Get the fields set with set().
+     *
+     * @return array
+     */
+    public function getExtra()
+    {
+        return $this->extra;
+    }
+
+    /**
      * Convert to array
      *
      * @return array
@@ -163,7 +192,7 @@ class PackageData implements Arrayable
             $data['is_fragile'] = true;
         }
 
-        return $data;
+        return array_merge($data, $this->extra);
     }
 
     /**
@@ -187,6 +216,14 @@ class PackageData implements Arrayable
 
         if (isset($data['is_fragile'])) {
             $package->setFragile($data['is_fragile']);
+        }
+
+        // Anything else is kept and sent as given rather than dropped.
+        $known = array('weight', 'length', 'width', 'height', 'description', 'is_fragile');
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $known, true)) {
+                $package->set($key, $value);
+            }
         }
 
         return $package;

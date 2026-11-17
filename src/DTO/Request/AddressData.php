@@ -72,6 +72,11 @@ class AddressData implements Arrayable
     private $additionalInfo;
 
     /**
+     * @var array Fields with no typed setter, sent as given
+     */
+    private $extra = array();
+
+    /**
      * Create address data
      *
      * @param int $cityId City ID
@@ -334,6 +339,30 @@ class AddressData implements Arrayable
     }
 
     /**
+     * Set a field that has no typed setter. It is sent as given, after the
+     * typed fields, so it wins over one of the same name.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return $this
+     */
+    public function set($key, $value)
+    {
+        $this->extra[(string) $key] = $value;
+        return $this;
+    }
+
+    /**
+     * Get the fields set with set().
+     *
+     * @return array
+     */
+    public function getExtra()
+    {
+        return $this->extra;
+    }
+
+    /**
      * Convert to array
      *
      * @return array
@@ -364,7 +393,7 @@ class AddressData implements Arrayable
             }
         }
 
-        return $data;
+        return array_merge($data, $this->extra);
     }
 
     /**
@@ -394,6 +423,13 @@ class AddressData implements Arrayable
         foreach ($setters as $key => $method) {
             if (isset($data[$key])) {
                 $address->$method($data[$key]);
+            }
+        }
+
+        // Anything else is kept and sent as given rather than dropped.
+        foreach ($data as $key => $value) {
+            if ($key !== 'city_id' && !isset($setters[$key]) && $value !== null) {
+                $address->set($key, $value);
             }
         }
 

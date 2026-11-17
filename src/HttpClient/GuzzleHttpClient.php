@@ -8,6 +8,7 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Request;
 use PigeonExpress\Configuration;
 use PigeonExpress\Exceptions\AuthenticationException;
+use PigeonExpress\Exceptions\ConflictException;
 use PigeonExpress\Exceptions\ConnectionException;
 use PigeonExpress\Exceptions\ForbiddenException;
 use PigeonExpress\Exceptions\NotFoundException;
@@ -191,6 +192,13 @@ class GuzzleHttpClient implements HttpClientInterface
 
             case 404:
                 throw new NotFoundException($message, $statusCode);
+
+            case 409:
+                // An identical request is still running. Retry-After says how
+                // long to wait before repeating it; a missing value stays 0 so
+                // the caller can apply its own default.
+                $retryAfter = $response->getHeader('Retry-After', 0);
+                throw new ConflictException($message, is_numeric($retryAfter) ? (int) $retryAfter : 0, $statusCode);
 
             case 422:
                 throw new ValidationException($message, $errors, $statusCode);

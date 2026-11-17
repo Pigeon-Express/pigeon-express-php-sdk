@@ -77,6 +77,23 @@ class Response
     }
 
     /**
+     * Whether the API answered with the stored result of an earlier identical
+     * request instead of acting on this one.
+     *
+     * The API deduplicates write requests: a request identical to one that
+     * succeeded less than 30 seconds earlier (same credentials, path and body)
+     * gets that first answer back, marked with `X-Duplicate-Request: true`, and
+     * nothing else happens. The first answer may be out of date by then, for
+     * example the shipment it created may have been cancelled since.
+     *
+     * @return bool
+     */
+    public function isDuplicateRequest()
+    {
+        return strtolower(trim((string) $this->getHeader('X-Duplicate-Request', ''))) === 'true';
+    }
+
+    /**
      * @return string
      */
     public function getBody()

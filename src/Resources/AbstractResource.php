@@ -4,8 +4,10 @@ namespace PigeonExpress\Resources;
 
 use PigeonExpress\HttpClient\HttpClientInterface;
 use PigeonExpress\Contracts\Arrayable;
+use PigeonExpress\Exceptions\ConflictException;
 use PigeonExpress\Exceptions\PigeonExpressException;
 use PigeonExpress\Exceptions\RateLimitException;
+use PigeonExpress\HttpClient\Response;
 
 /**
  * Abstract Resource
@@ -42,9 +44,44 @@ abstract class AbstractResource
     const MAX_PAGES = 500;
 
     /**
+     * How a write answered with 409 is repeated: at most this many times,
+     * waiting what the API asks for in between, within these bounds. The whole
+     * exchange has to end well inside the 30 seconds for which the API answers
+     * an identical request with the original result.
+     */
+    const CONFLICT_RETRIES = 2;
+    const CONFLICT_WAIT_DEFAULT = 5;
+    const CONFLICT_WAIT_MAX = 8;
+
+    /**
+     * What {@see getLastReplay()} says about the last write call.
+     *
+     * - REPLAY_NONE: the API acted on this request.
+     * - REPLAY_REPEAT: the answer to a repeat made after a 409, so it is the
+     *   result of the identical request that was still running when this one
+     *   was sent. Nothing came after it.
+     * - REPLAY_EARLIER: the stored answer of an identical request made earlier
+     *   by another call. Something may have happened since, for example the
+     *   shipment it created may have been cancelled.
+     */
+    const REPLAY_NONE = '';
+    const REPLAY_REPEAT = 'repeat';
+    const REPLAY_EARLIER = 'earlier';
+
+    /**
      * @var HttpClientInterface
      */
     protected $httpClient;
+
+    /**
+     * @var string One of the REPLAY_* constants
+     */
+    private $lastReplay = self::REPLAY_NONE;
+
+    /**
+     * @var int|null Override for CONFLICT_RETRIES, null for the default
+     */
+    private $conflictRetries;
 
     /**
      * Create resource instance
@@ -205,6 +242,95 @@ abstract class AbstractResource
         }
 
         throw $lastException;
+    }
+
+    /**
+     * Whether the answer to the last write call made through this resource was
+     * the API's replay of an identical request, and of which one.
+     *
+     * Read it straight after the call it is about: every write call resets it.
+     * Read calls leave it alone.
+     *
+     * @return string One of the REPLAY_* constants
+     */
+    public function getLastReplay()
+    {
+        return $this->lastReplay;
+    }
+
+    /**
+     * Whether the last write call was answered with a replayed result.
+     *
+     * @return bool
+     */
+    public function wasLastReplayed()
+    {
+        return $this->lastReplay !== self::REPLAY_NONE;
+    }
+
+    /**
+     * Set how many times a write answered with 409 is repeated before the
+     * ConflictException is thrown. 0 turns repeating off.
+     *
+     * @param int $retries
+     * @return $this
+     */
+    public function setConflictRetries($retries)
+    {
+        $this->conflictRetries = max(0, (int) $retries);
+
+        return $this;
+    }
+
+    /**
+     * Send a write request, tracking a replayed answer and, when asked to,
+     * repeating it while the API answers 409.
+     *
+     * A 409 says an identical request is still being processed, in practice
+     * often the caller's own earlier attempt whose answer was lost to a
+     * timeout. The repeat is sent at once with the very same body: it is only
+     * safe while the API's 30 second deduplication lasts, and a retry scheduled
+     * for minutes later would fall outside it.
+     *
+     * Still 409 after the repeats: the ConflictException is thrown, and the
+     * caller must treat the outcome as unknown.
+     *
+     * @param string $method POST or PUT
+     * @param string $path
+     * @param array $body
+     * @param bool $repeatConflicts
+     * @return Response
+     * @throws PigeonExpressException
+     */
+    protected function sendWrite($method, $path, array $body = array(), $repeatConflicts = true)
+    {
+        $this->lastReplay = self::REPLAY_NONE;
+
+        $retries = $repeatConflicts
+            ? ($this->conflictRetries !== null ? $this->conflictRetries : static::CONFLICT_RETRIES)
+            : 0;
+
+        for ($repeats = 0; ; $repeats++) {
+            try {
+                $response = strtoupper($method) === 'PUT'
+                    ? $this->getClient()->put($path, $body)
+                    : $this->getClient()->post($path, $body);
+            } catch (ConflictException $e) {
+                if ($repeats >= $retries) {
+                    throw $e;
+                }
+
+                $wait = $e->getRetryAfter() > 0 ? $e->getRetryAfter() : static::CONFLICT_WAIT_DEFAULT;
+                $this->pause(min($wait, static::CONFLICT_WAIT_MAX) * 1000000);
+                continue;
+            }
+
+            if ($response->isDuplicateRequest()) {
+                $this->lastReplay = $repeats > 0 ? self::REPLAY_REPEAT : self::REPLAY_EARLIER;
+            }
+
+            return $response;
+        }
     }
 
     /**

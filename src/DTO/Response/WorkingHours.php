@@ -14,6 +14,11 @@ class WorkingHours implements Arrayable
     /**
      * @var array|null Monday hours
      */
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    private $entries = array();
+
     private $monday;
 
     /**
@@ -45,6 +50,16 @@ class WorkingHours implements Arrayable
      * @var array|null Sunday hours
      */
     private $sunday;
+
+    /**
+     * Every stretch as the API listed it: {day, open, close, ...} entries.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getEntries()
+    {
+        return $this->entries;
+    }
 
     /**
      * Get Monday hours
@@ -185,6 +200,32 @@ class WorkingHours implements Arrayable
     public static function fromArray(array $data)
     {
         $hours = new self();
+        $hours->entries = array();
+
+        // The API sends a list of {day, open, close} entries; a day may be
+        // listed more than once (a lunch break). Older answers were keyed by
+        // day. Both are read; the first stretch of a day fills its getter.
+        if ($data !== array() && array_keys($data) === range(0, count($data) - 1)) {
+            $keyed = array();
+            foreach ($data as $entry) {
+                if (!is_array($entry) || !isset($entry['day'])) {
+                    continue;
+                }
+                $hours->entries[] = $entry;
+                $day = strtolower((string) $entry['day']);
+                if (!isset($keyed[$day])) {
+                    $keyed[$day] = array_diff_key($entry, array('day' => true));
+                }
+            }
+            $data = $keyed;
+        } else {
+            foreach ($data as $day => $value) {
+                if (is_array($value)) {
+                    $hours->entries[] = array('day' => (string) $day) + $value;
+                }
+            }
+        }
+
         $hours->monday = isset($data['monday']) ? $data['monday'] : null;
         $hours->tuesday = isset($data['tuesday']) ? $data['tuesday'] : null;
         $hours->wednesday = isset($data['wednesday']) ? $data['wednesday'] : null;

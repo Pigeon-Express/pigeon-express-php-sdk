@@ -192,7 +192,12 @@ class Shipment implements Arrayable
         if (isset($data['status']) && is_array($data['status'])) {
             $shipment->status = ShipmentStatus::fromArray($data['status']);
         } else {
-            $shipment->status = ShipmentStatus::fromArray(array('code' => '', 'name' => ''));
+            // The create endpoint sends the status as a plain name, with the
+            // code, when there is one, beside it.
+            $shipment->status = ShipmentStatus::fromArray(array(
+                'code' => isset($data['status_code']) ? (string) $data['status_code'] : '',
+                'name' => isset($data['status']) && is_scalar($data['status']) ? (string) $data['status'] : '',
+            ));
         }
 
         if (isset($data['packages']) && is_array($data['packages'])) {
