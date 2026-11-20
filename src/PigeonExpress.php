@@ -8,6 +8,7 @@ use PigeonExpress\Resources\AdditionalServices;
 use PigeonExpress\Resources\Addresses;
 use PigeonExpress\Resources\Cities;
 use PigeonExpress\Resources\CourierRequests;
+use PigeonExpress\Resources\Lockers;
 use PigeonExpress\Resources\Offices;
 use PigeonExpress\Resources\Shipments;
 use PigeonExpress\Resources\ShipmentStatuses;
@@ -26,6 +27,7 @@ use PigeonExpress\Resources\Streets;
  * @property-read ShipmentStatuses $shipmentStatuses
  * @property-read CourierRequests $courierRequests
  * @property-read Addresses $addresses
+ * @property-read Lockers $lockers
  */
 class PigeonExpress
 {
@@ -230,6 +232,20 @@ class PigeonExpress
         }
 
         return $this->resources['addresses'];
+    }
+
+    /**
+     * Get parcel lockers resource (free boxes by locker code)
+     *
+     * @return Lockers
+     */
+    public function lockers()
+    {
+        if (!isset($this->resources['lockers'])) {
+            $this->resources['lockers'] = new Lockers($this->httpClient);
+        }
+
+        return $this->resources['lockers'];
     }
 
     /**

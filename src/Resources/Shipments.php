@@ -7,6 +7,8 @@ use PigeonExpress\DTO\Request\CalculateShipmentRequest;
 use PigeonExpress\DTO\Request\CreateShipmentRequest;
 use PigeonExpress\DTO\Response\BulkTrackingEntry;
 use PigeonExpress\DTO\Response\Shipment;
+use PigeonExpress\DTO\Response\ShipmentActionResult;
+use PigeonExpress\DTO\Response\ShipmentActions;
 use PigeonExpress\DTO\Response\ShipmentDetails;
 use PigeonExpress\DTO\Response\ShipmentCalculation;
 use PigeonExpress\DTO\Response\TrackingInfo;
@@ -32,6 +34,15 @@ class Shipments extends AbstractResource
 
     /** Most references the API tracks in one bulk request. */
     const TRACK_BULK_MAX = 100;
+
+    /**
+     * The quick actions of {@see runAction()}, as the API names them. The
+     * hyphenated path spelling (`change-delivery`) is accepted as well.
+     */
+    const ACTION_CHANGE_DELIVERY = ShipmentActions::CHANGE_DELIVERY;
+    const ACTION_SERVICES = ShipmentActions::SERVICES;
+    const ACTION_COD = ShipmentActions::COD;
+    const ACTION_DECLARED_VALUE = ShipmentActions::DECLARED_VALUE;
 
     /**
      * Every label format the API accepts.
@@ -144,6 +155,132 @@ class Shipments extends AbstractResource
         $shipment = $response->getData('data');
 
         return ShipmentDetails::fromArray(is_array($shipment) ? $shipment : array());
+    }
+
+    /**
+     * What the sender can change on a shipment now
+     * (GET /shipments/{referenceNumber}/actions): all four quick actions, each
+     * allowed or not with the reason, the current values, the services that
+     * can be added or removed, the pricing and, on a redirected shipment, the
+     * active reference number.
+     *
+     * Answers 404 (NotFoundException, error code `not_found`) for a shipment
+     * this account did not send and for every return shipment, and 502
+     * (ServerException, error code `backend_unavailable`) when the courier's
+     * system cannot answer just then. A package barcode is not accepted.
+     *
+     * @param string $referenceNumber
+     * @return ShipmentActions
+     * @throws \InvalidArgumentException For an empty reference
+     * @throws \PigeonExpress\Exceptions\PigeonExpressException
+     */
+    public function actions($referenceNumber)
+    {
+        $referenceNumber = $this->requireReference($referenceNumber);
+
+        $response = $this->getClient()->get('shipments/' . rawurlencode($referenceNumber) . '/actions');
+        $data = $response->getData('data');
+
+        return ShipmentActions::fromArray(is_array($data) ? $data : array());
+    }
+
+    /**
+     * Take one quick action on a registered shipment, or only price it
+     * (POST /shipments/{referenceNumber}/actions/{action}).
+     *
+     * `$action` is one of the ACTION_* names or its path spelling
+     * (`change-delivery`, `declared-value`). `$body` holds the action's own
+     * fields; `dry_run` is always set from `$dryRun`, as a boolean, whatever
+     * the body says:
+     *
+     *  - change_delivery: `delivery_type` with `delivery_office_id` or
+     *    `delivery_address`. Once the shipment is past newly registered this
+     *    makes a NEW shipment (a redirect), whose number is
+     *    {@see ShipmentActionResult::getNewReferenceNumber()}.
+     *  - services: `add` and / or `remove`, lists of service codes.
+     *  - cod: `cod_amount` (null removes it) and / or `allow_cod_card_payment`.
+     *  - declared_value: `declared_value` (null removes it).
+     *
+     * A null in the body is sent as null: that is how a value is removed.
+     *
+     * A dry run changes nothing, answers with the price and is never
+     * repeated: a 409 there is thrown at once. A real action repeats a 409
+     * like {@see update()} does, and {@see getLastReplay()} tells when its
+     * answer was the API's replay of an identical change made within the last
+     * 30 seconds: then the change was made once, by that earlier request.
+     *
+     * A refusal throws. Decide by
+     * {@see \PigeonExpress\Exceptions\PigeonExpressException::getErrorCode()},
+     * never by the message: 422 codes include action_not_allowed (with
+     * `conflicts` on a change to a locker), requires_office_payment (with
+     * `price.amount_due`), already_redirected (with
+     * `active_reference_number`), no_change, fee_closed, validation_failed
+     * and service_not_allowed_for_locker; a field check by the API itself has
+     * `errors` and no code. The whole body is in getResponseData().
+     *
+     * @param string $referenceNumber
+     * @param string $action
+     * @param array $body
+     * @param bool $dryRun
+     * @return ShipmentActionResult
+     * @throws \InvalidArgumentException For an empty reference or an unknown action
+     * @throws \PigeonExpress\Exceptions\PigeonExpressException
+     */
+    public function runAction($referenceNumber, $action, array $body = array(), $dryRun = false)
+    {
+        $referenceNumber = $this->requireReference($referenceNumber);
+        $segment = self::actionSegment($action);
+
+        if ($segment === '') {
+            throw new \InvalidArgumentException(sprintf('Unknown shipment action: %s', (string) $action));
+        }
+
+        $dryRun = (bool) $dryRun;
+        unset($body['dry_run']);
+        $body['dry_run'] = $dryRun;
+
+        // A price is asked for while someone waits and changes nothing, so a
+        // 409 there is reported at once instead of held for a repeat.
+        $response = $this->sendWrite(
+            'POST',
+            'shipments/' . rawurlencode($referenceNumber) . '/actions/' . $segment,
+            $body,
+            !$dryRun
+        );
+
+        $data = $response->getData('data');
+        $message = $response->getData('message', '');
+
+        return ShipmentActionResult::fromArray(is_array($data) ? $data : array(), is_scalar($message) ? (string) $message : '');
+    }
+
+    /**
+     * The path segment of a quick action from either spelling
+     * (`change_delivery` or `change-delivery`), or an empty string for
+     * anything that is not one of the four.
+     *
+     * @param string $action
+     * @return string
+     */
+    public static function actionSegment($action)
+    {
+        return ShipmentActions::segmentOf($action);
+    }
+
+    /**
+     * @param mixed $referenceNumber
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    private function requireReference($referenceNumber)
+    {
+        $referenceNumber = is_scalar($referenceNumber) ? trim((string) $referenceNumber) : '';
+
+        if ($referenceNumber === '') {
+            throw new \InvalidArgumentException('A shipment reference number is required.');
+        }
+
+        return $referenceNumber;
     }
 
     /**

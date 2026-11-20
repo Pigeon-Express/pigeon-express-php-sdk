@@ -32,6 +32,11 @@ class SearchStreetsRequest implements Arrayable
     private $limit;
 
     /**
+     * @var string|null Filter by postcode (a prefix match)
+     */
+    private $postalCode;
+
+    /**
      * Set name filter
      *
      * @param string $name
@@ -120,6 +125,28 @@ class SearchStreetsRequest implements Arrayable
     }
 
     /**
+     * Set postcode filter (a prefix match, 2 to 10 characters)
+     *
+     * @param string $postalCode
+     * @return $this
+     */
+    public function setPostalCode($postalCode)
+    {
+        $this->postalCode = (string) $postalCode;
+        return $this;
+    }
+
+    /**
+     * Get postcode filter
+     *
+     * @return string|null
+     */
+    public function getPostalCode()
+    {
+        return $this->postalCode;
+    }
+
+    /**
      * Convert to array
      *
      * @return array
@@ -142,6 +169,10 @@ class SearchStreetsRequest implements Arrayable
 
         if ($this->limit !== null) {
             $data['limit'] = $this->limit;
+        }
+
+        if ($this->postalCode !== null) {
+            $data['postal_code'] = $this->postalCode;
         }
 
         return $data;
@@ -171,6 +202,10 @@ class SearchStreetsRequest implements Arrayable
 
         if (isset($data['limit'])) {
             $request->setLimit($data['limit']);
+        }
+
+        if (isset($data['postal_code'])) {
+            $request->setPostalCode($data['postal_code']);
         }
 
         return $request;

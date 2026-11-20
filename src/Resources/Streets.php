@@ -13,24 +13,35 @@ use PigeonExpress\Exceptions\PigeonExpressException;
  *
  * There is no /streets/search endpoint. Streets only exist within a city, via
  * GET /cities/{cityId}/streets, which accepts a name filter (minimum 2
- * characters, with Latin to Cyrillic transliteration) plus page and per_page.
- * Every method here maps onto that.
+ * characters, with Latin to Cyrillic transliteration), a postal_code filter
+ * (a prefix match, 2 to 10 characters) plus page and per_page. Every method
+ * here maps onto that.
  */
 class Streets extends AbstractResource
 {
     /** The API requires at least this many characters for a name search. */
     const MIN_SEARCH_LENGTH = 2;
 
+    /** The postcode filter the API accepts: 2 to 10 characters. */
+    const POSTAL_CODE_MIN_LENGTH = 2;
+    const POSTAL_CODE_MAX_LENGTH = 10;
+
     /**
      * Get every street in a city, following pagination.
      *
+     * A postcode is a prefix match on the API's side ("4000" also returns
+     * streets under "40001"), and streets the API has no postcode for are
+     * left out, so a caller that finds nothing that way tries again without
+     * it. A postcode shorter than 2 or longer than 10 characters is not sent.
+     *
      * @param int $cityId City ID
      * @param string|null $name Optional name filter, applied by the API
+     * @param string|null $postalCode Optional postcode filter, applied by the API
      * @return Street[]
      */
-    public function byCity($cityId, $name = null)
+    public function byCity($cityId, $name = null, $postalCode = null)
     {
-        return $this->mapToDto($this->fetchAllPages($cityId, $name), Street::class);
+        return $this->mapToDto($this->fetchAllPages($cityId, $name, $postalCode), Street::class);
     }
 
     /**
@@ -51,7 +62,11 @@ class Streets extends AbstractResource
             );
         }
 
-        $streets = $this->byCity($query['city_id'], isset($query['name']) ? $query['name'] : null);
+        $streets = $this->byCity(
+            $query['city_id'],
+            isset($query['name']) ? $query['name'] : null,
+            isset($query['postal_code']) ? $query['postal_code'] : null
+        );
 
         return $this->applyLimit($streets, $query);
     }
@@ -62,11 +77,12 @@ class Streets extends AbstractResource
      * @param int $cityId City ID
      * @param string $name Street name to search
      * @param int|null $limit Cap the number of results returned
+     * @param string|null $postalCode Optional postcode filter, see byCity()
      * @return Street[]
      */
-    public function searchInCity($cityId, $name, $limit = null)
+    public function searchInCity($cityId, $name, $limit = null, $postalCode = null)
     {
-        $streets = $this->byCity($cityId, $name);
+        $streets = $this->byCity($cityId, $name, $postalCode);
 
         return $limit !== null ? array_slice($streets, 0, (int) $limit) : $streets;
     }
@@ -115,9 +131,10 @@ class Streets extends AbstractResource
      *
      * @param int $cityId
      * @param string|null $name
+     * @param string|null $postalCode
      * @return array
      */
-    private function fetchAllPages($cityId, $name = null)
+    private function fetchAllPages($cityId, $name = null, $postalCode = null)
     {
         $filters = array();
 
@@ -128,6 +145,14 @@ class Streets extends AbstractResource
             if (mb_strlen($name) >= self::MIN_SEARCH_LENGTH) {
                 $filters['name'] = mb_substr($name, 0, 100);
             }
+        }
+
+        $postalCode = is_scalar($postalCode) ? trim((string) $postalCode) : '';
+        $length = mb_strlen($postalCode);
+        // Outside what the API accepts the filter is refused, so it is left
+        // out and the listing is narrowed by name only.
+        if ($length >= self::POSTAL_CODE_MIN_LENGTH && $length <= self::POSTAL_CODE_MAX_LENGTH) {
+            $filters['postal_code'] = $postalCode;
         }
 
         return $this->paginate('cities/' . (int) $cityId . '/streets', $filters);

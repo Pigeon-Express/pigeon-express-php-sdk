@@ -79,6 +79,12 @@ class Office implements Arrayable
     private $longitude;
 
     /**
+     * @var float|null Straight-line distance from the searched point, in km.
+     *                 Only set on the answer of a nearest search.
+     */
+    private $distanceKm;
+
+    /**
      * Get office ID
      *
      * @return int
@@ -202,6 +208,18 @@ class Office implements Arrayable
     }
 
     /**
+     * Straight-line distance from the point of a nearest search, in km
+     * (`distance_km`), or null on any other listing and when the API left it
+     * out.
+     *
+     * @return float|null
+     */
+    public function getDistanceKm()
+    {
+        return $this->distanceKm;
+    }
+
+    /**
      * Check if this is a locker
      *
      * @return bool
@@ -275,6 +293,9 @@ class Office implements Arrayable
         $office->email = isset($data['email']) ? $data['email'] : null;
         $office->latitude = isset($data['latitude']) ? (float) $data['latitude'] : null;
         $office->longitude = isset($data['longitude']) ? (float) $data['longitude'] : null;
+        $office->distanceKm = isset($data['distance_km']) && is_numeric($data['distance_km'])
+            ? (float) $data['distance_km']
+            : null;
 
         if (isset($data['city']) && is_array($data['city'])) {
             $office->city = City::fromArray($data['city']);
@@ -299,7 +320,7 @@ class Office implements Arrayable
      */
     public function toArray()
     {
-        return array(
+        $array = array(
             'id' => $this->id,
             'name' => $this->name,
             'code' => $this->code,
@@ -312,5 +333,12 @@ class Office implements Arrayable
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
         );
+
+        // Only a nearest search has a distance; other listings keep their shape.
+        if ($this->distanceKm !== null) {
+            $array['distance_km'] = $this->distanceKm;
+        }
+
+        return $array;
     }
 }

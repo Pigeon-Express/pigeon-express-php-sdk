@@ -47,6 +47,11 @@ class Street implements Arrayable
     private $typeEn;
 
     /**
+     * @var string|null Postcode of the street, null when the API has none
+     */
+    private $postalCode;
+
+    /**
      * Get street ID
      *
      * @return int
@@ -87,11 +92,6 @@ class Street implements Arrayable
     }
 
     /**
-     * Get city ID
-     *
-     * @return int
-     */
-    /**
      * Get the Latin transliteration of the street name.
      *
      * Needed to match a street typed in Latin script against Cyrillic data.
@@ -111,9 +111,25 @@ class Street implements Arrayable
         return $this->typeEn;
     }
 
+    /**
+     * Get city ID
+     *
+     * @return int
+     */
     public function getCityId()
     {
         return $this->cityId;
+    }
+
+    /**
+     * The street's postcode, or null when the API has none for it. Many
+     * streets have none, and a postcode search leaves those out.
+     *
+     * @return string|null
+     */
+    public function getPostalCode()
+    {
+        return $this->postalCode;
     }
 
     /**
@@ -132,6 +148,9 @@ class Street implements Arrayable
         $street->cityId = isset($data['city_id']) ? (int) $data['city_id'] : 0;
         $street->nameEn = isset($data['name_en']) ? $data['name_en'] : null;
         $street->typeEn = isset($data['type_en']) ? $data['type_en'] : null;
+        $street->postalCode = isset($data['postal_code']) && is_scalar($data['postal_code']) && trim((string) $data['postal_code']) !== ''
+            ? trim((string) $data['postal_code'])
+            : null;
 
         return $street;
     }
@@ -151,6 +170,7 @@ class Street implements Arrayable
             'city_id' => $this->cityId,
             'name_en' => $this->nameEn,
             'type_en' => $this->typeEn,
+            'postal_code' => $this->postalCode,
         );
     }
 }

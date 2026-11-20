@@ -32,9 +32,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package and address objects, so fields without a setter are sent instead of
   dropped.
 - `FeeBreakdown` exposes the fee's service `code` and `quantity`.
+- `offices()->nearest($latitude, $longitude, $type, $limit)` for
+  `GET /offices/nearest`: the offices and parcel lockers closest to a point,
+  nearest first, with `Office::getDistanceKm()`. `$type` is `all`, `office`
+  or `locker` (`aps` is taken for a locker), `$limit` 1 to 20 (default 5).
+  Coordinates are sent in fixed notation; a point out of range or an unknown
+  type throws `InvalidArgumentException` without a request.
+- `lockers()` resource: `availability($code)` reads a parcel locker's box
+  sizes and the forecast of free boxes for today and tomorrow from
+  `GET /lockers/{code}/availability` as a `LockerAvailability`
+  (`getBoxSizes()` as `LockerBoxSize`, `getFreeBoxes('today'|'tomorrow')`,
+  `isBlocked()`, `getBlockedUntil()`).
+- `shipments()->actions($ref)` reads the sender's quick actions from
+  `GET /shipments/{ref}/actions` as a `ShipmentActions` (all four actions
+  always present, with `isAllowed()`, `getReasonCode()`, `getReason()`, the
+  current values, the services that can be added or removed and the active
+  reference number of a redirected shipment).
+- `shipments()->runAction($ref, $action, $body, $dryRun)` takes or prices one
+  quick action through `POST /shipments/{ref}/actions/{action}` and returns a
+  `ShipmentActionResult` (price, removed services, the new reference number
+  of a redirect). Either spelling of the action is accepted
+  (`change_delivery` or `change-delivery`); `dry_run` is always sent as a
+  boolean from `$dryRun`. A real action repeats a 409 like an edit and
+  reports a replay through `getLastReplay()`; a dry run is never repeated.
+- Streets: `byCity()`, `searchInCity()` and `search()` take an optional
+  postcode (`postal_code`, a prefix match, sent only when 2 to 10
+  characters), and `Street::getPostalCode()` reads the street's postcode.
+- Every exception for an API error answer keeps the decoded body:
+  `getResponseData()`, `getErrorCode()` (the API's `code`, for example
+  `requires_office_payment`, `already_redirected`, `not_found` or
+  `backend_unavailable`) and `getResponseField('price.amount_due')`, next to
+  the HTTP status from `getHttpStatusCode()`.
 
 ### Fixed
 - `track()` URL-encodes the reference number.
+- An error answered in the `{"error": {"message": ...}}` shape (an unknown
+  route) keeps its message instead of "Unknown error".
 - `Shipment` reads the status the create endpoint sends as a plain name.
 - `WorkingHours` reads the list of `{day, open, close}` entries the offices
   endpoint sends. It expected an object keyed by day and lost every day.

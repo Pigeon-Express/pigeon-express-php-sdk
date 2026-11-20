@@ -169,6 +169,10 @@ class GuzzleHttpClient implements HttpClientInterface
     /**
      * Handle API error responses
      *
+     * Every exception thrown here carries the HTTP status and the decoded
+     * error body ({@see PigeonExpressException::getResponseData()}), so the
+     * API's `code` and the extra fields of a refusal are not lost.
+     *
      * @param Response $response
      * @throws PigeonExpressException
      */
@@ -180,39 +184,66 @@ class GuzzleHttpClient implements HttpClientInterface
 
         $statusCode = $response->getStatusCode();
         $data = $response->json();
-        $message = isset($data['message']) ? $data['message'] : 'Unknown error';
-        $errors = isset($data['errors']) ? $data['errors'] : array();
+        $data = is_array($data) ? $data : array();
+        $message = self::errorMessage($data);
+        $errors = isset($data['errors']) && is_array($data['errors']) ? $data['errors'] : array();
 
         switch ($statusCode) {
             case 401:
-                throw new AuthenticationException($message, $statusCode);
+                $exception = new AuthenticationException($message, $statusCode);
+                break;
 
             case 403:
-                throw new ForbiddenException($message, $statusCode);
+                $exception = new ForbiddenException($message, $statusCode);
+                break;
 
             case 404:
-                throw new NotFoundException($message, $statusCode);
+                $exception = new NotFoundException($message, $statusCode);
+                break;
 
             case 409:
                 // An identical request is still running. Retry-After says how
                 // long to wait before repeating it; a missing value stays 0 so
                 // the caller can apply its own default.
                 $retryAfter = $response->getHeader('Retry-After', 0);
-                throw new ConflictException($message, is_numeric($retryAfter) ? (int) $retryAfter : 0, $statusCode);
+                $exception = new ConflictException($message, is_numeric($retryAfter) ? (int) $retryAfter : 0, $statusCode);
+                break;
 
             case 422:
-                throw new ValidationException($message, $errors, $statusCode);
+                $exception = new ValidationException($message, $errors, $statusCode);
+                break;
 
             case 429:
                 $retryAfter = $response->getHeader('Retry-After', 60);
-                throw new RateLimitException($message, (int) $retryAfter, $statusCode);
+                $exception = new RateLimitException($message, (int) $retryAfter, $statusCode);
+                break;
 
             default:
-                if ($response->isServerError()) {
-                    throw new ServerException($message, $statusCode);
-                }
-
-                throw new PigeonExpressException($message, $statusCode);
+                $exception = $response->isServerError()
+                    ? new ServerException($message, $statusCode)
+                    : new PigeonExpressException($message, $statusCode);
         }
+
+        throw $exception->withResponseData($data);
+    }
+
+    /**
+     * The message of an error answer: `message`, or `error.message`, the
+     * shape some routes answer an unknown path with.
+     *
+     * @param array $data
+     * @return string
+     */
+    private static function errorMessage(array $data)
+    {
+        if (isset($data['message']) && is_string($data['message']) && $data['message'] !== '') {
+            return $data['message'];
+        }
+
+        if (isset($data['error']['message']) && is_string($data['error']['message']) && $data['error']['message'] !== '') {
+            return $data['error']['message'];
+        }
+
+        return 'Unknown error';
     }
 }
