@@ -127,13 +127,13 @@ class AdditionalService implements Arrayable
 
         $service->code = isset($data['code']) ? (string) $data['code'] : '';
         $service->name = isset($data['name']) ? (string) $data['name'] : '';
-        $service->description = isset($data['description']) && $data['description'] !== null
+        $service->description = isset($data['description'])
             ? (string) $data['description']
             : null;
-        $service->inputType = isset($data['input_type']) && $data['input_type'] !== null
+        $service->inputType = isset($data['input_type'])
             ? (string) $data['input_type']
             : null;
-        $service->optionGroup = isset($data['option_group']) && $data['option_group'] !== null
+        $service->optionGroup = isset($data['option_group'])
             ? (string) $data['option_group']
             : null;
 
